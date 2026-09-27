@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Machine-specific overrides, such as DeadworksDir. Not committed. -->
+  <Import Project="local.props" Condition="Exists('local.props')" />
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+
+  <!-- Deadlock's game\bin\win64 folder, with Deadworks installed. Override it in local.props or with
+       -p:DeadworksDir=<path>. -->
+  <PropertyGroup>
+    <DeadworksDir Condition="'$(DeadworksDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Deadlock\game\bin\win64</DeadworksDir>
+    <DeadworksApi>$(DeadworksDir)\managed\DeadworksManaged.Api.dll</DeadworksApi>
+  </PropertyGroup>
+
+  <!-- The server already has the Deadworks API and the protobuf library it uses, so the build output is just
+       AutoMatch.dll. -->
+  <ItemGroup>
+    <Reference Include="DeadworksManaged.Api">
+      <HintPath>$(DeadworksApi)</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Google.Protobuf">
+      <HintPath>$(DeadworksDir)\managed\Google.Protobuf.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="CheckDeadworksApi" BeforeTargets="ResolveAssemblyReferences" Condition="!Exists('$(DeadworksApi)')">
+    <Error Text="Deadworks isn't installed at $(DeadworksDir). Set DeadworksDir to Deadlock's game\bin\win64 folder in local.props or with -p:DeadworksDir=&lt;path&gt;." />
+  </Target>
+
+  <!-- Copy each build into that install's plugins folder. Turn off with -p:DeployToGame=false. -->
+  <Target Name="DeployToGame" AfterTargets="Build" Condition="'$(DeployToGame)' != 'false' And Exists('$(DeadworksDir)\managed\plugins')">
+    <ItemGroup>
+      <AutoMatchOutputs Include="$(TargetDir)AutoMatch.dll;$(TargetDir)AutoMatch.pdb;$(TargetDir)AutoMatch.deps.json" />
+    </ItemGroup>
+    <Copy SourceFiles="@(AutoMatchOutputs)" DestinationFolder="$(DeadworksDir)\managed\plugins" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>
